@@ -1,153 +1,109 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Glass Head</title>
-
-<style>
-html, body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: transparent;
-}
-
-canvas {
-  display: block;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>Glass Head</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; }
+    </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
+
+<!-- Подключаем Three.js через Import Map -->
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+</script>
 
 <script type="module">
-import * as THREE from 'https://esm.sh/three@0.158.0';
-import { GLTFLoader } from 'https://esm.sh/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
-import { RGBELoader } from 'https://esm.sh/three@0.158.0/examples/jsm/loaders/RGBELoader.js';
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const canvas = document.getElementById("canvas");
+    // 1. Настройка сцены
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000); // Черный фон, как на фото
 
-const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 4); // Позиция камеры
 
-const camera = new THREE.PerspectiveCamera(
-  40,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  100
-);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; // Кинематографичная цветокоррекция
+    renderer.toneMappingExposure = 1.2;
+    document.body.appendChild(renderer.domElement);
 
-camera.position.set(0, 0, 2.8);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
 
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  alpha: true,
-  antialias: true
-});
+    // 2. Загрузка карты окружения (HDR)
+    // Это ключевой момент для эффекта хрома. Используем бесплатную карту с Poly Haven.
+    const rgbeLoader = new RGBELoader();
+    rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/low/1k/studio_small_03_1k.hdr', function (texture) {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        
+        // Устанавливаем окружение для сцены (отражения)
+        scene.environment = texture;
+        
+        // Создаем материал "Жидкий Хром"
+        const chromeMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            metalness: 1.0,      // Полная металличность
+            roughness: 0.15,     // Очень гладкая поверхность
+            clearcoat: 1.0,      // Дополнительный слой лака для блеска
+            clearcoatRoughness: 0.1,
+            envMapIntensity: 2.0 // Усиливаем отражения
+        });
 
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        // --- ЗДЕСЬ НУЖНО ЗАГРУЗИТЬ ВАШУ МОДЕЛЬ ГОЛОВЫ ---
+        // Пока я создаю примерную геометрию (сферу), чтобы вы видели результат.
+        // Замените этот блок на загрузчик GLTFLoader для вашей модели.
+        
+        const geometry = new THREE.IcosahedronGeometry(1.2, 4);
+        const mesh = new THREE.Mesh(geometry, chromeMaterial);
+        scene.add(mesh);
 
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.35;
-renderer.physicallyCorrectLights = true;
+        // Пример очков (простая геометрия)
+        // В реальности очки должны быть частью модели или отдельным мешем
+        const glassesMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            transmission: 0.9, // Прозрачность
+            opacity: 1,
+            metalness: 0,
+            roughness: 0,
+            ior: 1.5,
+            thickness: 0.1,
+            specularIntensity: 1,
+            envMapIntensity: 1
+        });
+        
+        // Простая дужка очков для примера
+        const glassesGeo = new THREE.BoxGeometry(2.2, 0.05, 0.05);
+        const glasses = new THREE.Mesh(glassesGeo, glassesMat);
+        glasses.position.z = 1.1;
+        scene.add(glasses);
+    });
 
-// HDR окружение
-new RGBELoader().load(
-  'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr',
-  function(texture) {
-    texture.mapping = THREE.EquirectangularReflectionMapping;
-    scene.environment = texture;
-  }
-);
-
-// Свет
-const key = new THREE.DirectionalLight(0xffffff, 4);
-key.position.set(3, 2, 5);
-scene.add(key);
-
-const rim = new THREE.DirectionalLight(0xffffff, 2);
-rim.position.set(-4, 1, -2);
-scene.add(rim);
-
-const fill = new THREE.AmbientLight(0xffffff, 1.5);
-scene.add(fill);
-
-let model;
-
-const loader = new GLTFLoader();
-
-loader.load("head.glb", (gltf) => {
-  model = gltf.scene;
-
-  const box = new THREE.Box3().setFromObject(model);
-  const center = box.getCenter(new THREE.Vector3());
-  model.position.sub(center);
-
-  const size = box.getSize(new THREE.Vector3()).length();
-  const scale = 2.3 / size;
-  model.scale.setScalar(scale);
-
-  model.traverse((child) => {
-    if (child.isMesh) {
-      child.material = new THREE.MeshPhysicalMaterial({
-        transmission: 1,
-        roughness: 0.02,
-        thickness: 1.4,
-        ior: 1.52,
-        envMapIntensity: 3.5,
-        clearcoat: 1,
-        clearcoatRoughness: 0,
-        transparent: true,
-        opacity: 1
-      });
+    // Анимация
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
     }
-  });
+    animate();
 
-  scene.add(model);
-
-  console.log("MODEL LOADED");
-});
-
-let targetX = 0;
-let targetY = 0;
-let currentX = 0;
-let currentY = 0;
-
-window.addEventListener("mousemove", (e) => {
-  targetX = (e.clientX / window.innerWidth - 0.5);
-  targetY = (e.clientY / window.innerHeight - 0.5);
-});
-
-window.addEventListener("touchmove", (e) => {
-  const t = e.touches[0];
-  targetX = (t.clientX / window.innerWidth - 0.5);
-  targetY = (t.clientY / window.innerHeight - 0.5);
-});
-
-function animate() {
-  requestAnimationFrame(animate);
-
-  if (model) {
-    currentX += (targetX - currentX) * 0.06;
-    currentY += (targetY - currentY) * 0.06;
-
-    model.rotation.y = currentX * 1.2;
-    model.rotation.x = currentY * 0.6;
-  }
-
-  renderer.render(scene, camera);
-}
-
-animate();
-
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+    // Ресайз окна
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 </script>
 </body>
 </html>
