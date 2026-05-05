@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Head Tracking</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+
+  canvas {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.158.0';
+import { GLTFLoader } from 'https://esm.sh/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
+
+// сцена
+const scene = new THREE.Scene();
+
+// камера
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 2.5);
+
+// рендер
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+// свет (мягкий портфолио-вид)
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+keyLight.position.set(2, 2, 5);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+fillLight.position.set(-2, 1, 3);
+scene.add(fillLight);
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+scene.add(ambient);
+
+// загрузка модели
+const loader = new GLTFLoader();
+let model;
+
+loader.load('head.glb', (gltf) => {
+  model = gltf.scene;
+
+  // центрируем (очень важно для правильного вращения)
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  model.position.sub(center);
+
+  scene.add(model);
+});
+
+// курсор
+let targetX = 0;
+let targetY = 0;
+
+// десктоп
+window.addEventListener('mousemove', (e) => {
+  targetX = (e.clientX / window.innerWidth - 0.5);
+  targetY = (e.clientY / window.innerHeight - 0.5);
+});
+
+// мобильные
+window.addEventListener('touchmove', (e) => {
+  const touch = e.touches[0];
+  targetX = (touch.clientX / window.innerWidth - 0.5);
+  targetY = (touch.clientY / window.innerHeight - 0.5);
+});
+
+// плавность
+let currentX = 0;
+let currentY = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (model) {
+    currentX += (targetX - currentX) * 0.08;
+    currentY += (targetY - currentY) * 0.08;
+
+    // ограничения как у человека
+    const maxY = 0.8; // влево-вправо
+    const maxX = 0.4; // вверх-вниз
+
+    model.rotation.y = currentX * maxY * 2;
+    model.rotation.x = currentY * maxX * 2;
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// ресайз
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
