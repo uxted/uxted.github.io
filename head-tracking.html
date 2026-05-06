@@ -1,1 +1,158 @@
-<iframe allowtransparency="true" style="width: 90vw;height:80vh;background-color: transparent" src="https://app.endlesstools.io/embed/bcf7be9e-1bbf-40c7-95a6-9644b49531b1" title="uxted's Head" frameborder="0" allow="clipboard-write; encrypted-media; gyroscope; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Glass Head - Endless Tools Style</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: transparent; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { TextureLoader } from 'three';
+
+    // === СЦЕНА ===
+    const scene = new THREE.Scene();
+    scene.background = null; // Прозрачный фон как в оригинале
+
+    // === КАМЕРА (FOV: 10 как в источнике) ===
+    const camera = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 0, 25); // Увеличено расстояние из-за маленького FOV
+
+    // === РЕНДЕРЕР ===
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    document.body.appendChild(renderer.domElement);
+
+    // === УПРАВЛЕНИЕ ===
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    // === ОСВЕЩЕНИЕ (точные параметры из Endless Tools) ===
+    // Directional Light
+    const dirLight = new THREE.DirectionalLight(0xffffff, 3); // dirIntensity: 3
+    dirLight.position.set(-9.48, 3.17, 4.1); // lightX, lightY, lightZ
+    scene.add(dirLight);
+
+    // Hemisphere Light
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.3); // hemiIntensity: 0.3
+    scene.add(hemiLight);
+
+    // === ЗАГРУЗКА ОКРУЖЕНИЯ (HDR) ===
+    const rgbeLoader = new RGBELoader();
+    // Используем нейтральную студию, похожую на "BE 10"
+    rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/low/1k/studio_small_03_1k.hdr', function(hdrTexture) {
+        hdrTexture.mapping = THREE.EquirectangularReflectionMapping;
+        scene.environment = hdrTexture;
+        
+        // === МАТЕРИАЛ "Soapy Glass" (точные параметры) ===
+        const glassMaterial = new THREE.MeshPhysicalMaterial({
+            // Основные настройки
+            color: new THREE.Color('#9FCDC8'), // Цвет из источника
+            transmission: 1.0,                  // type: "transmission"
+            opacity: 1,
+            transparent: false,
+            
+            // Оптические свойства
+            ior: 1.39,                          // Точное значение из JSON
+            thickness: 9.28,                    // Точное значение
+            
+            // Поверхность
+            metalness: 0.21,                    // metallnes из JSON
+            roughness: 0.94,                    // Высокая шероховатость для "мыльного" эффекта
+            clearcoat: 0.3,
+            clearcoatRoughness: 0.5,
+            
+            // Отражения
+            envMapIntensity: 2.5,               // hdrPower: 2.5
+            
+            // Текстуры (если доступны)
+            // roughnessMap будет добавлена ниже
+        });
+
+        // Загрузка текстуры шероховатости
+        new TextureLoader().load(
+            'https://app.endlesstools.io/_next/static/media/roughness.449f07c3.jpg',
+            function(roughnessMap) {
+                roughnessMap.wrapS = roughnessMap.wrapT = THREE.RepeatWrapping;
+                roughnessMap.repeat.set(0.93, 0.93); // repeat: 0.93
+                glassMaterial.roughnessMap = roughnessMap;
+                glassMaterial.needsUpdate = true;
+            }
+        );
+
+        // === ЗАГРУЗКА МОДЕЛИ ===
+        const loader = new GLTFLoader();
+        const modelUrl = 'https://api.endlesstools.io/storage/v1/object/public/embeds/30dd7027-8718-4f9c-87e3-e8903eb9366b/1777978546754_model.glb';
+        
+        loader.load(modelUrl, function(gltf) {
+            const model = gltf.scene;
+            
+            // Применяем материал ко всем мешам модели
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = glassMaterial.clone();
+                }
+            });
+            
+            // Масштаб и позиция из источника
+            model.scale.set(0.06, 0.06, 0.06); // scale.x/y/z
+            model.position.set(0, 0, 0);
+            model.rotation.set(-0.0225, 0.0083, 0.1854); // rotation x/y/z
+            
+            scene.add(model);
+        }, undefined, function(error) {
+            console.error('Ошибка загрузки модели:', error);
+            // Fallback: сфера для демонстрации
+            const fallbackGeo = new THREE.SphereGeometry(1, 64, 64);
+            const fallback = new THREE.Mesh(fallbackGeo, glassMaterial);
+            fallback.scale.set(0.06, 0.06, 0.06);
+            fallback.rotation.set(-0.0225, 0.0083, 0.1854);
+            scene.add(fallback);
+        });
+    });
+
+    // === АНИМАЦИЯ ===
+    let time = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        time += 0.005; // 0.05 / 10 для плавности
+        
+        // Интерактивное вращение (autoModeType: "interactive", interactiveMode: "move")
+        controls.update();
+        
+        // Лёгкая авто-анимация если нужна
+        // scene.rotation.y = Math.sin(time) * 0.05;
+        
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // === РЕСАЙЗ ===
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+</script>
+</body>
+</html>
