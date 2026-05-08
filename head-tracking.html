@@ -1,122 +1,304 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Glass Head</title>
-    <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background: #000; 
-        }
-        canvas { 
-            display: block; 
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Glass Head Tracking</title>
+
+<style>
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+</style>
 </head>
 <body>
 
-<script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-        }
-    }
-</script>
+<canvas id="canvas"></canvas>
 
 <script type="module">
-    import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-    // === СЦЕНА ===
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
+import * as THREE from 'https://esm.sh/three@0.158.0';
+import { GLTFLoader } from 'https://esm.sh/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
+import { RGBELoader } from 'https://esm.sh/three@0.158.0/examples/jsm/loaders/RGBELoader.js';
 
-    // === КАМЕРА ===
-    const camera = new THREE.PerspectiveCamera(10, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 25);
+const canvas = document.getElementById('canvas');
 
-    // === РЕНДЕРЕР ===
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    document.body.appendChild(renderer.domElement);
+//
+// SCENE
+//
 
-    // === УПРАВЛЕНИЕ ===
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
+const scene = new THREE.Scene();
 
-    // === ОСВЕЩЕНИЕ ===
-    const dirLight = new THREE.DirectionalLight(0xffffff, 3);
-    dirLight.position.set(-9.48, 3.17, 4.1);
-    scene.add(dirLight);
+//
+// CAMERA
+//
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.3);
-    scene.add(hemiLight);
+const camera = new THREE.PerspectiveCamera(
+  35,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  100
+);
 
-    // === МАТЕРИАЛ "Soapy Glass" ===
-    let glassMaterial;
-    
-    const rgbeLoader = new RGBELoader();
-    rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/low/1k/studio_small_03_1k.hdr', function(hdrTexture) {
-        hdrTexture.mapping = THREE.EquirectangularReflectionMapping;
-        scene.environment = hdrTexture;
-        
-        glassMaterial = new THREE.MeshPhysicalMaterial({
-            color: new THREE.Color('#9FCDC8'),
-            transmission: 1.0,
-            opacity: 1,
-            ior: 1.39,
-            thickness: 9.28,
-            metalness: 0.21,
-            roughness: 0.94,
-            clearcoat: 0.3,
-            clearcoatRoughness: 0.5,
-            envMapIntensity: 2.5
-        });
+camera.position.set(0, 0, 3);
 
-        // === ЗАГРУЗКА МОДЕЛИ ===
-        const loader = new GLTFLoader();
-        loader.load("head.glb", (gltf) => {
-            model = gltf.scene;
-            
-            // Применяем материал ко всем частям модели
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    child.material = glassMaterial.clone();
-                }
-            });
-            
-            // Масштаб и позиция
-            model.scale.set(0.06, 0.06, 0.06);
-            model.rotation.set(-0.0225, 0.0083, 0.1854);
-            
-            scene.add(model);
-        }, undefined, (error) => {
-            console.error('Ошибка загрузки модели:', error);
-        });
+//
+// RENDERER
+//
+
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  alpha: true
+});
+
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+renderer.setPixelRatio(
+  Math.min(window.devicePixelRatio, 2)
+);
+
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+renderer.physicallyCorrectLights = true;
+
+//
+// HDR ENVIRONMENT
+//
+
+new RGBELoader().load(
+  'studio.hdr',
+  (texture) => {
+
+    texture.mapping =
+      THREE.EquirectangularReflectionMapping;
+
+    scene.environment = texture;
+
+  }
+);
+
+//
+// LIGHTS
+//
+
+const light1 = new THREE.DirectionalLight(
+  0xffffff,
+  2
+);
+
+light1.position.set(5, 5, 5);
+
+scene.add(light1);
+
+const light2 = new THREE.DirectionalLight(
+  0xffffff,
+  1
+);
+
+light2.position.set(-5, 2, 3);
+
+scene.add(light2);
+
+const ambient = new THREE.AmbientLight(
+  0xffffff,
+  0.8
+);
+
+scene.add(ambient);
+
+//
+// MODEL
+//
+
+let model;
+
+const loader = new GLTFLoader();
+
+loader.load(
+
+  'head.glb',
+
+  (gltf) => {
+
+    model = gltf.scene;
+
+    //
+    // CENTER MODEL
+    //
+
+    const box =
+      new THREE.Box3().setFromObject(model);
+
+    const center =
+      box.getCenter(new THREE.Vector3());
+
+    model.position.sub(center);
+
+    //
+    // AUTO SCALE
+    //
+
+    const size =
+      box.getSize(new THREE.Vector3()).length();
+
+    const scale = 2 / size;
+
+    model.scale.setScalar(scale);
+
+    //
+    // GLASS MATERIAL
+    //
+
+    model.traverse((child) => {
+
+      if (child.isMesh) {
+
+        child.material =
+          new THREE.MeshPhysicalMaterial({
+
+            color: 0xffffff,
+
+            metalness: 0,
+
+            roughness: 0.02,
+
+            transmission: 1,
+
+            thickness: 1.5,
+
+            ior: 1.52,
+
+            envMapIntensity: 2.5,
+
+            clearcoat: 1,
+
+            clearcoatRoughness: 0
+
+          });
+
+      }
+
     });
 
-    let model;
+    scene.add(model);
 
-    // === АНИМАЦИЯ ===
-    function animate() {
-        requestAnimationFrame(animate);
-        controls.update();
-        renderer.render(scene, camera);
-    }
-    animate();
+    console.log('MODEL LOADED');
 
-    // === РЕСАЙЗ ===
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+  },
+
+  undefined,
+
+  (error) => {
+
+    console.error('GLB LOAD ERROR:', error);
+
+  }
+
+);
+
+//
+// CURSOR TRACKING
+//
+
+let targetX = 0;
+let targetY = 0;
+
+let currentX = 0;
+let currentY = 0;
+
+//
+// DESKTOP
+//
+
+window.addEventListener('mousemove', (e) => {
+
+  targetX =
+    (e.clientX / window.innerWidth - 0.5);
+
+  targetY =
+    (e.clientY / window.innerHeight - 0.5);
+
+});
+
+//
+// MOBILE
+//
+
+window.addEventListener('touchmove', (e) => {
+
+  const touch = e.touches[0];
+
+  targetX =
+    (touch.clientX / window.innerWidth - 0.5);
+
+  targetY =
+    (touch.clientY / window.innerHeight - 0.5);
+
+});
+
+//
+// ANIMATION
+//
+
+function animate() {
+
+  requestAnimationFrame(animate);
+
+  if (model) {
+
+    currentX +=
+      (targetX - currentX) * 0.06;
+
+    currentY +=
+      (targetY - currentY) * 0.06;
+
+    model.rotation.y =
+      currentX * 1.2;
+
+    model.rotation.x =
+      currentY * 0.7;
+
+  }
+
+  renderer.render(scene, camera);
+
+}
+
+animate();
+
+//
+// RESIZE
+//
+
+window.addEventListener('resize', () => {
+
+  camera.aspect =
+    window.innerWidth / window.innerHeight;
+
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+  );
+
+});
+
 </script>
+
 </body>
 </html>
