@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Glass Head Tracking</title>
+<title>ASCII Head</title>
 
 <style>
   html,
@@ -12,33 +12,52 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: #000;
+    background: black;
   }
 
-  canvas {
-    display: block;
+  #ascii {
     width: 100vw;
     height: 100vh;
+    overflow: hidden;
+    background: black;
+  }
+
+  pre {
+    margin: 0;
+    color: #4893CE;
+    background: black;
+    font-family: monospace;
+    font-size: 64px;
+    line-height: 48px;
   }
 </style>
+
+<!-- IMPORT MAP -->
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+  }
+}
+</script>
+
 </head>
 
 <body>
 
-<canvas id="canvas"></canvas>
+<div id="ascii"></div>
 
 <script type="module">
 
-import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js?module';
+import * as THREE from 'three';
 
-import { GLTFLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/GLTFLoader.js?module';
+import { GLTFLoader }
+from 'three/addons/loaders/GLTFLoader.js';
 
-//
-// CANVAS
-//
-
-const canvas =
-  document.getElementById('canvas');
+import { AsciiEffect }
+from 'three/addons/effects/AsciiEffect.js';
 
 //
 // SCENE
@@ -67,39 +86,52 @@ const camera =
 
   );
 
-camera.position.set(0, 0, 3);
+camera.position.z = 3;
 
 //
 // RENDERER
 //
 
 const renderer =
-  new THREE.WebGLRenderer({
-
-    canvas,
-
-    antialias: true,
-
-    alpha: false
-
-  });
+  new THREE.WebGLRenderer();
 
 renderer.setSize(
   window.innerWidth,
   window.innerHeight
 );
 
-renderer.setPixelRatio(
-  Math.min(window.devicePixelRatio, 2)
-);
-
 renderer.outputColorSpace =
   THREE.SRGBColorSpace;
 
-renderer.toneMapping =
-  THREE.ACESFilmicToneMapping;
+//
+// ASCII EFFECT
+//
 
-renderer.toneMappingExposure = 1.2;
+const effect =
+  new AsciiEffect(
+
+    renderer,
+
+    ' ▓▒░#@%*+=-:.',
+
+    { invert: true }
+
+  );
+
+effect.setSize(
+  window.innerWidth,
+  window.innerHeight
+);
+
+document
+  .getElementById('ascii')
+  .appendChild(effect.domElement);
+
+effect.domElement.style.color =
+  '#4893CE';
+
+effect.domElement.style.backgroundColor =
+  'black';
 
 //
 // LIGHTS
@@ -115,23 +147,12 @@ light1.position.set(5, 5, 5);
 
 scene.add(light1);
 
-const light2 =
-  new THREE.DirectionalLight(
-    0xffffff,
-    1
-  );
-
-light2.position.set(-5, 2, 3);
-
-scene.add(light2);
-
-const ambient =
+scene.add(
   new THREE.AmbientLight(
     0xffffff,
     1
-  );
-
-scene.add(ambient);
+  )
+);
 
 //
 // MODEL
@@ -151,7 +172,7 @@ loader.load(
     model = gltf.scene;
 
     //
-    // CENTER MODEL
+    // CENTER
     //
 
     const box =
@@ -166,7 +187,7 @@ loader.load(
     model.position.sub(center);
 
     //
-    // AUTO SCALE
+    // SCALE
     //
 
     const size =
@@ -174,12 +195,13 @@ loader.load(
         new THREE.Vector3()
       ).length();
 
-    const scale = 2 / size;
+    const scale =
+      2 / size;
 
     model.scale.setScalar(scale);
 
     //
-    // GLASS MATERIAL
+    // MATERIAL
     //
 
     model.traverse((child) => {
@@ -187,25 +209,9 @@ loader.load(
       if (child.isMesh) {
 
         child.material =
-          new THREE.MeshPhysicalMaterial({
+          new THREE.MeshStandardMaterial({
 
-            color: 0x4388BF,
-
-            metalness: 0.3,
-
-            roughness: 0.5,
-
-            transmission: 3,
-
-            thickness: 1.5,
-
-            ior: 0.95,
-
-            envMapIntensity: 1.5,
-
-            clearcoat: 0,
-
-            clearcoatRoughness: 0
+            color: 0xffffff
 
           });
 
@@ -223,10 +229,7 @@ loader.load(
 
   (error) => {
 
-    console.error(
-      'GLB LOAD ERROR:',
-      error
-    );
+    console.error(error);
 
   }
 
@@ -242,12 +245,10 @@ let targetY = 0;
 let currentX = 0;
 let currentY = 0;
 
-//
-// DESKTOP
-//
-
 window.addEventListener(
+
   'mousemove',
+
   (e) => {
 
     targetX =
@@ -257,6 +258,7 @@ window.addEventListener(
       (e.clientY / window.innerHeight - 0.5);
 
   }
+
 );
 
 //
@@ -264,7 +266,9 @@ window.addEventListener(
 //
 
 window.addEventListener(
+
   'touchmove',
+
   (e) => {
 
     const touch = e.touches[0];
@@ -276,6 +280,7 @@ window.addEventListener(
       (touch.clientY / window.innerHeight - 0.5);
 
   }
+
 );
 
 //
@@ -302,7 +307,7 @@ function animate() {
 
   }
 
-  renderer.render(scene, camera);
+  effect.render(scene, camera);
 
 }
 
@@ -313,7 +318,9 @@ animate();
 //
 
 window.addEventListener(
+
   'resize',
+
   () => {
 
     camera.aspect =
@@ -327,7 +334,13 @@ window.addEventListener(
       window.innerHeight
     );
 
+    effect.setSize(
+      window.innerWidth,
+      window.innerHeight
+    );
+
   }
+
 );
 
 </script>
