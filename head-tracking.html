@@ -27,8 +27,8 @@
     color: #4893CE;
     background: black;
     font-family: monospace;
-    font-size: 64px;
-    line-height: 48px;
+    font-size: 4px;
+    line-height: 4px;
   }
 </style>
 
@@ -86,7 +86,7 @@ const camera =
 
   );
 
-camera.position.z = 3;
+camera.position.z = 2.8;
 
 //
 // RENDERER
@@ -94,6 +94,8 @@ camera.position.z = 3;
 
 const renderer =
   new THREE.WebGLRenderer();
+
+renderer.setPixelRatio(2);
 
 renderer.setSize(
   window.innerWidth,
@@ -112,7 +114,13 @@ const effect =
 
     renderer,
 
-    ' ▓▒░#@%*+=-:.',
+    ' @.u.x. t.ed',
+
+    // ' %@# UX T E D',
+
+    // ' UX TED .RU',
+
+    // ' .:-+* =%@# CG08',
 
     { invert: true }
 
@@ -144,6 +152,16 @@ const light1 =
   );
 
 light1.position.set(5, 5, 5);
+
+const rimLight =
+  new THREE.DirectionalLight(
+    0xffffff,
+    2
+  );
+
+rimLight.position.set(-5, -2, -5);
+
+scene.add(rimLight);
 
 scene.add(light1);
 
